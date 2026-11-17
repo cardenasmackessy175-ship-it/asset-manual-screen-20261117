@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>资产手筛 · 人物 / 动物 / 建筑</title>
+<style>
+:root{--bg:#141518;--panel:#1d1f24;--line:#2c2f36;--text:#e6e7ea;--dim:#9a9ea8;--accent:#5b9dff;--red:#e5484d;--green:#3fb97a;--card:230px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px}
+.row{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.row+.row{margin-top:8px}
+h1{font-size:16px;margin:0 8px 0 0;font-weight:600}
+.stat{color:var(--dim)}.stat b{color:var(--text);font-variant-numeric:tabular-nums}
+button,select,input[type=search]{font:inherit;color:var(--text);background:#262930;border:1px solid var(--line);border-radius:6px;padding:5px 10px}
+button{cursor:pointer}button:hover{border-color:#4a4f5a}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent;border-right:1px solid var(--line);padding:6px 16px}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--accent);color:#fff}
+.seg small{opacity:.8;margin-left:5px;font-variant-numeric:tabular-nums}
+label.lab{color:var(--dim);font-size:12px}
+input[type=search]{width:200px}
+.grow{flex:1}
+details{margin-top:8px;color:var(--dim);font-size:13px}details summary{cursor:pointer}details p{margin:6px 0}
+main{padding:14px 16px 80px}
+#count{color:var(--dim);margin-bottom:10px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--card),1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;position:relative}
+.card .pic{aspect-ratio:1/1;background:#26262a;cursor:zoom-in;display:block;width:100%}
+.card img{width:100%;height:100%;object-fit:contain;display:block}
+.card .meta{padding:7px 9px 9px}
+.card .name{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .sub{font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.45em}
+.del{position:absolute;top:8px;right:8px;background:rgba(20,21,24,.82);border:1px solid #5a2a2d;color:#ff9a9e;padding:4px 12px;border-radius:6px;font-weight:600}
+.del:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.card.gone{opacity:.42}.card.gone .del{border-color:#2a5a40;color:#8fe3b5}.card.gone .del:hover{background:var(--green);color:#fff}
+#more{height:60px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#2b2e36;border:1px solid var(--line);border-radius:8px;padding:9px 14px;display:none;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+#toast button{margin-left:10px}
+#box{position:fixed;inset:0;background:rgba(8,9,11,.93);z-index:50;display:none;grid-template-columns:minmax(0,1fr) 340px}
+#box.on{display:grid}
+#box .stage{display:flex;align-items:center;justify-content:center;padding:18px;min-height:0;position:relative;overflow:hidden}
+#box .stage img{width:100%;height:100%;max-width:1400px;object-fit:contain}
+#box aside{background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow:auto}
+#box h2{font-size:15px;margin:0 0 6px;word-break:break-all}
+#box .kv{color:var(--dim);font-size:12.5px;margin:3px 0;word-break:break-all}
+#box .kv a{color:var(--accent)}
+#box .acts{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+#box .acts .big{padding:8px 18px;font-weight:600}
+#bdel{border-color:#5a2a2d;color:#ff9a9e}#bdel.res{border-color:#2a5a40;color:#8fe3b5}
+.nav{position:absolute;top:50%;transform:translateY(-50%);font-size:26px;padding:10px 14px;background:rgba(30,32,38,.7)}
+#prev{left:10px}#next{right:10px}
+.keys{color:var(--dim);font-size:12px;margin-top:14px}
+@media(max-width:900px){#box.on{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}#box aside{max-height:40vh;border-left:0;border-top:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>资产手筛</h1>
+    <span class="stat">保留 <b id="kept">0</b>（目标 1500，<span id="gap"></span>）</span>
+    <span class="stat">已删除 <b id="gone">0</b> · 候选共 <b id="all">0</b></span>
+    <span class="grow"></span>
+    <button id="exkeep" title="导出当前保留的资产清单（TSV）">导出保留清单</button>
+    <button id="exdel" title="导出删除清单；也是进度备份，可发给别人或用“导入进度”读回">导出删除清单</button>
+    <button id="imp" title="读入一份删除清单（自己的备份或别人发来的），与当前进度合并">导入进度</button>
+    <input type="file" id="file" accept=".json,.txt,.tsv" hidden>
+  </div>
+  <div class="row">
+    <span class="seg" id="klass"></span>
+    <span class="seg" id="view"></span>
+    <label class="lab">大小 <select id="size"><option value="170">小</option><option value="230" selected>中</option><option value="330">大</option><option value="460">特大</option></select></label>
+    <input type="search" id="q" placeholder="搜名称 / 标题">
+  </div>
+  <details><summary>范围说明与用法</summary><div id="scope"></div></details>
+</header>
+<main>
+  <div id="count"></div>
+  <div id="grid"></div>
+  <div id="more"></div>
+</main>
+<div id="toast"><span id="tmsg"></span><button id="undo">撤销</button></div>
+<div id="box">
+  <div class="stage"><button class="nav" id="prev">‹</button><img id="bimg" alt=""><button class="nav" id="next">›</button></div>
+  <aside>
+    <h2 id="bname"></h2>
+    <div id="binfo"></div>
+    <div class="acts"><button class="big" id="bdel">删除 (D)</button><button id="balt">看源站预览</button><button id="bclose">关闭 (Esc)</button></div>
+    <div class="keys">← → 上一个 / 下一个　D 删除并看下一个　U 恢复　Esc 关闭</div>
+  </aside>
+</div>
+<script>
+const KEY = 'manual_screen_20261117.deleted';
+const BOM = String.fromCharCode(0xFEFF);
+const KLASS = {human: '人物', animal: '动物', building: '建筑'};
+const $ = id => document.getElementById(id);
+let items = [], byName = new Map(), shown = [], drawn = 0, cur = -1, alt = false, lastBatch = null;
+let deleted = new Set();
+try { deleted = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch (e) {}
+const state = {klass: 'human', view: 'keep', q: ''};
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...deleted])); } catch (e) { alert('浏览器存不下进度了，请先“导出删除清单”备份'); } };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const img = (it, src) => 'img/' + encodeURIComponent(it.n) + (src ? '.src' : '') + '.webp';
+
+function seg(el, options, key) {
+  el.innerHTML = options.map(([v, t]) => `<button data-v="${v}" class="${state[key] === v ? 'on' : ''}">${t}<small></small></button>`).join('');
+  el.onclick = e => { const b = e.target.closest('button'); if (!b) return; state[key] = b.dataset.v; [...el.children].forEach(c => c.classList.toggle('on', c === b)); refresh(); };
+}
+
+function counts() {
+  const k = {human: 0, animal: 0, building: 0}; let gone = 0, goneHere = 0, here = 0;
+  for (const it of items) { const d = deleted.has(it.n); if (d) gone++; else k[it.k]++; if (it.k === state.klass) { here++; if (d) goneHere++; } }
+  const kept = items.length - gone;
+  $('kept').textContent = kept; $('gone').textContent = gone; $('all').textContent = items.length;
+  $('gap').textContent = kept >= 1500 ? '还多 ' + (kept - 1500) : '还差 ' + (1500 - kept);
+  for (const b of $('klass').children) b.querySelector('small').textContent = k[b.dataset.v];
+  const v = {keep: here - goneHere, gone: goneHere, all: here};
+  for (const b of $('view').children) b.querySelector('small').textContent = v[b.dataset.v];
+}
+
+function match(it) {
+  if (it.k !== state.klass) return false;
+  const gone = deleted.has(it.n);
+  if (state.view === 'keep' && gone) return false;
+  if (state.view === 'gone' && !gone) return false;
+  if (state.q) { const q = state.q.toLowerCase(); if (!(it.n + ' ' + it.t + ' ' + it.id).toLowerCase().includes(q)) return false; }
+  return true;
+}
+
+function refresh() { shown = items.filter(match); $('grid').innerHTML = ''; drawn = 0; more(); counts(); note(); }
+function note() { $('count').textContent = `${KLASS[state.klass]} · ${state.view === 'keep' ? '保留中' : state.view === 'gone' ? '已删除' : '全部'} ${shown.length} 个` + (state.q ? '（搜索结果）' : ''); }
+
+function card(it) {
+  const gone = deleted.has(it.n);
+  const el = document.createElement('div'); el.className = 'card' + (gone ? ' gone' : ''); el.dataset.n = it.n;
+  el.innerHTML = `<a class="pic"><img loading="lazy" decoding="async" src="${img(it)}" alt=""></a>
+<button class="del">${gone ? '恢复' : '删除'}</button>
+<div class="meta"><div class="name" title="${esc(it.n)}">${esc(it.n)}</div><div class="sub" title="${esc(it.t)}">${esc(it.t)}</div></div>`;
+  return el;
+}
+function more() {
+  const frag = document.createDocumentFragment();
+  for (const it of shown.slice(drawn, drawn + 120)) frag.appendChild(card(it));
+  drawn = Math.min(shown.length, drawn + 120); $('grid').appendChild(frag);
+}
+new IntersectionObserver(es => { if (es[0].isIntersecting && drawn < shown.length) more(); }, {rootMargin: '1200px'}).observe($('more'));
+
+function setDeleted(names, gone, quiet) {
+  for (const n of names) gone ? deleted.add(n) : deleted.delete(n);
+  save();
+  for (const n of names) {
+    const el = $('grid').querySelector(`.card[data-n="${CSS.escape(n)}"]`);
+    if (!el) continue;
+    const stays = state.view === 'all' || (state.view === 'keep') !== gone;
+    if (stays) { el.classList.toggle('gone', gone); el.querySelector('.del').textContent = gone ? '恢复' : '删除'; }
+    else el.remove();
+  }
+  if (state.view !== 'all') { const set = new Set(names); const before = shown.length; shown = shown.filter(it => !set.has(it.n) || match(it)); drawn = Math.max(0, drawn - (before - shown.length)); if (drawn < 60 && drawn < shown.length) more(); }
+  counts(); note();
+  if (!quiet) { lastBatch = {names: [...names], gone}; $('tmsg').textContent = (gone ? '已删除 ' : '已恢复 ') + (names.length === 1 ? names[0] : names.length + ' 个'); $('toast').style.display = 'block'; clearTimeout(setDeleted.t); setDeleted.t = setTimeout(() => $('toast').style.display = 'none', 6000); }
+}
+$('undo').onclick = () => { if (lastBatch) { setDeleted(lastBatch.names, !lastBatch.gone, true); if (state.view !== 'all') refresh(); lastBatch = null; } $('toast').style.display = 'none'; };
+
+$('grid').onclick = e => {
+  const el = e.target.closest('.card'); if (!el) return;
+  const n = el.dataset.n;
+  if (e.target.closest('.del')) setDeleted([n], !deleted.has(n));
+  else if (e.target.closest('.pic')) show(shown.findIndex(it => it.n === n));
+};
+
+function show(i) {
+  if (i < 0 || i >= shown.length) return;
+  cur = i; alt = false; const it = shown[i]; if (i > drawn - 5 && drawn < shown.length) more();
+  $('box').classList.add('on'); paint(it);
+  const nx = shown[i + 1]; if (nx) new Image().src = img(nx);
+}
+function paint(it) {
+  const gone = deleted.has(it.n);
+  $('bimg').src = img(it, alt);
+  $('bname').textContent = it.n + (it.t ? ' · ' + it.t : '');
+  $('balt').style.display = it.al ? '' : 'none'; $('balt').textContent = alt ? '看重渲染图' : '看源站预览';
+  $('bdel').textContent = gone ? '恢复 (U)' : '删除 (D)'; $('bdel').classList.toggle('res', gone);
+  const kv = [['类别', esc(KLASS[it.k])], ['来源', esc(it.s + (it.p ? ' / ' + it.p : '') + (it.c ? ' / ' + it.c : ''))],
+    ['图片', it.rd ? (alt ? '源站预览' : '重渲染图') : '源站预览'], ['状态', gone ? '已删除' : '保留中'], ['资产目录', esc(it.dir)],
+    ['源站', it.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.id || it.url)}</a>` : esc(it.id)]];
+  $('binfo').innerHTML = kv.filter(r => r[1]).map(r => `<div class="kv">${r[0]}：${r[1]}</div>`).join('') + `<div class="kv">第 ${cur + 1} / ${shown.length} 个</div>`;
+}
+function step(d) { const i = cur + d; if (i >= 0 && i < shown.length) show(i); }
+function boxDelete(gone) {
+  const it = shown[cur]; if (!it) return;
+  const leaves = state.view !== 'all';
+  setDeleted([it.n], gone);
+  if (leaves) { if (!shown.length) return shut(); show(Math.min(cur, shown.length - 1)); } else if (gone) step(1); else paint(it);
+}
+function shut() { $('box').classList.remove('on'); cur = -1; }
+$('bdel').onclick = () => { const it = shown[cur]; if (it) boxDelete(!deleted.has(it.n)); };
+$('balt').onclick = () => { alt = !alt; paint(shown[cur]); };
+$('bclose').onclick = shut; $('prev').onclick = () => step(-1); $('next').onclick = () => step(1);
+$('box').onclick = e => { if (e.target === $('box') || e.target.classList.contains('stage')) shut(); };
+document.addEventListener('keydown', e => {
+  if (cur < 0 || e.target.tagName === 'INPUT') return;
+  if (e.key === 'Escape') shut(); else if (e.key === 'ArrowRight') step(1); else if (e.key === 'ArrowLeft') step(-1);
+  else if (e.key === 'd' || e.key === 'D' || e.key === 'Delete' || e.key === 'Backspace') { if (!deleted.has(shown[cur].n)) boxDelete(true); e.preventDefault(); }
+  else if (e.key === 'u' || e.key === 'U') { if (deleted.has(shown[cur].n)) boxDelete(false); }
+});
+
+function download(name, text, bom) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([(bom ? BOM : '') + text], {type: 'text/plain;charset=utf-8'})); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+const stamp = () => new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+$('exkeep').onclick = () => {
+  const rows = items.filter(it => !deleted.has(it.n)).map(it => [it.n, KLASS[it.k], it.s + (it.p ? '/' + it.p : ''), it.c, it.dir, it.id].join('\t'));
+  download(`手筛保留清单_${rows.length}个_${stamp()}.tsv`, ['资产名\t类别\t来源\t分类\t资产目录\t源站ID'].concat(rows).join('\n') + '\n', true);
+};
+$('exdel').onclick = () => { const mine = [...deleted].filter(n => byName.has(n)).sort(); download(`手筛删除清单_${mine.length}个_${stamp()}.json`, JSON.stringify({page: 'manual_screen_20261117', exported: new Date().toISOString(), kept: items.length - mine.length, deleted: mine}, null, 1)); };
+$('imp').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return; let text = await f.text(), names; if (text.startsWith(BOM)) text = text.slice(1);
+  try { const j = JSON.parse(text); names = Array.isArray(j) ? j : j.deleted; } catch (x) { names = text.split(/\r?\n/).map(l => l.split('\t')[0].trim()).filter(Boolean); }
+  names = (names || []).filter(n => byName.has(n));
+  if (!names.length) alert('文件里没有认得出的资产名');
+  else if (confirm(`读到 ${names.length} 个已删除的资产，其中 ${names.filter(n => !deleted.has(n)).length} 个是这里还没删的。确定＝合并进当前进度；取消＝不导入`)) { names.forEach(n => deleted.add(n)); save(); refresh(); }
+  e.target.value = '';
+};
+
+$('q').oninput = e => { clearTimeout($('q').t); $('q').t = setTimeout(() => { state.q = e.target.value.trim(); refresh(); }, 200); };
+$('size').onchange = e => document.documentElement.style.setProperty('--card', e.target.value + 'px');
+
+fetch('data.json').then(r => r.json()).then(data => {
+  items = data.items; items.forEach(it => byName.set(it.n, it));
+  seg($('klass'), Object.entries(KLASS), 'klass');
+  seg($('view'), [['keep', '保留中'], ['gone', '已删除'], ['all', '全部']], 'view');
+  const s = data.summary, n = x => (x || 0).toLocaleString();
+  $('scope').innerHTML = `<p>生成时间 ${esc(s.built_at)}。NAS 上已下载的资产共 ${n(s.downloaded)} 个，本页是其中属于人物、动物、建筑三类且有预览图的 ${n(s.shown)} 个，来源：${Object.entries(s.shown_by_source || {}).map(([k, v]) => esc(k) + ' ' + n(v)).join('，')}。已判为科幻、奇幻、迪士尼/漫威/DC 角色的不在内。每一类里估计质量高的排在前面。</p>
+<p>“删除”只是在本页做标记，不动任何文件，随时可在“已删除”里恢复。进度存在各人自己的浏览器里，不会自动同步给别人：多人分工时各自筛完点“导出删除清单”，把文件发给汇总的人，由他用“导入进度”合并。全部筛完点“导出保留清单”。</p>`;
+  refresh();
+}).catch(e => { $('count').textContent = '数据没读出来：' + e; });
+</script>
+</body>
+</html>
