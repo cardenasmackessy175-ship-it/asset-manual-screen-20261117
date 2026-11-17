@@ -232,7 +232,7 @@ fetch('data.json').then(r => r.json()).then(data => {
   seg($('klass'), Object.entries(KLASS), 'klass');
   seg($('view'), [['keep', '保留中'], ['gone', '已删除'], ['all', '全部']], 'view');
   const s = data.summary, n = x => (x || 0).toLocaleString();
-  $('scope').innerHTML = `<p>生成时间 ${esc(s.built_at)}。NAS 上已下载的资产共 ${n(s.downloaded)} 个，本页是其中属于人物、动物、建筑三类且有预览图的 ${n(s.shown)} 个，来源：${Object.entries(s.shown_by_source || {}).map(([k, v]) => esc(k) + ' ' + n(v)).join('，')}。已判为科幻、奇幻、迪士尼/漫威/DC 角色的不在内。每一类里估计质量高的排在前面。</p>
+  $('scope').innerHTML = `<p>生成时间 ${esc(s.built_at)}。NAS 上已下载的资产共 ${n(s.downloaded)} 个，本页是其中属于人物、动物、建筑三类且有预览图的 ${n(s.shown)} 个，来源：${Object.entries(s.shown_by_source || {}).map(([k, v]) => esc(k) + ' ' + n(v)).join('，')}。已判为科幻、奇幻、迪士尼/漫威/DC 角色的不在内；复杂室外场景归在“建筑”里。每一类里估计质量高的排在前面，按源站分类补进来、没有经过自动筛选的排在最后（杂的多，可以快速删）。</p>
 <p>用法：看图，不要的点“删除”（刚删的可点底部“撤销”，之后也能在“已删除”里恢复）；进度自动存在这个浏览器里，关掉再打开还在。全部筛完点右上角“筛完后：导出保留清单”，把下载的文件交回即可。</p>
 <p>“删除”只是在本页做标记，不动任何文件。已交付过的资产（三个已交付目录）已经去掉。“备份进度 / 读入进度”只在两种情况用：换浏览器或清除浏览数据之前；多人分工时各自备份后发给汇总的人读入合并（各人的进度不会自动同步）。</p>`;
   refresh();
