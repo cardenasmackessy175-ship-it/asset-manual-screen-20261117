@@ -15,6 +15,7 @@ h1{font-size:16px;margin:0 8px 0 0;font-weight:600}
 .stat{color:var(--dim)}.stat b{color:var(--text);font-variant-numeric:tabular-nums}
 button,select,input[type=search]{font:inherit;color:var(--text);background:#262930;border:1px solid var(--line);border-radius:6px;padding:5px 10px}
 button{cursor:pointer}button:hover{border-color:#4a4f5a}
+button.main{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}button.minor{color:var(--dim)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .seg button{border:0;border-radius:0;background:transparent;border-right:1px solid var(--line);padding:6px 16px}
 .seg button:last-child{border-right:0}
@@ -63,9 +64,9 @@ main{padding:14px 16px 80px}
     <span class="stat">保留 <b id="kept">0</b>（目标 1500，<span id="gap"></span>）</span>
     <span class="stat">已删除 <b id="gone">0</b> · 候选共 <b id="all">0</b></span>
     <span class="grow"></span>
-    <button id="exkeep" title="导出当前保留的资产清单（TSV）">导出保留清单</button>
-    <button id="exdel" title="导出删除清单；也是进度备份，可发给别人或用“导入进度”读回">导出删除清单</button>
-    <button id="imp" title="读入一份删除清单（自己的备份或别人发来的），与当前进度合并">导入进度</button>
+    <button id="exdel" class="minor" title="把到目前为止的删除记录存成一个文件：换浏览器前备份，或多人分工时发给汇总的人">备份进度</button>
+    <button id="imp" class="minor" title="读入一份备份的进度（自己的或别人发来的），与当前进度合并">读入进度</button>
+    <button id="exkeep" class="main" title="全部筛完后点这里：导出留下来的资产清单">筛完后：导出保留清单</button>
     <input type="file" id="file" accept=".json,.txt,.tsv" hidden>
   </div>
   <div class="row">
@@ -100,7 +101,7 @@ let items = [], byName = new Map(), shown = [], drawn = 0, cur = -1, alt = false
 let deleted = new Set();
 try { deleted = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch (e) {}
 const state = {klass: 'human', view: 'keep', q: ''};
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...deleted])); } catch (e) { alert('浏览器存不下进度了，请先“导出删除清单”备份'); } };
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...deleted])); } catch (e) { alert('浏览器存不下进度了，请先点“备份进度”'); } };
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const img = (it, src) => 'img/' + encodeURIComponent(it.n) + (src ? '.src' : '') + '.webp';
 
@@ -212,7 +213,7 @@ $('exkeep').onclick = () => {
   const rows = items.filter(it => !deleted.has(it.n)).map(it => [it.n, KLASS[it.k], it.s + (it.p ? '/' + it.p : ''), it.c, it.dir, it.id].join('\t'));
   download(`手筛保留清单_${rows.length}个_${stamp()}.tsv`, ['资产名\t类别\t来源\t分类\t资产目录\t源站ID'].concat(rows).join('\n') + '\n', true);
 };
-$('exdel').onclick = () => { const mine = [...deleted].filter(n => byName.has(n)).sort(); download(`手筛删除清单_${mine.length}个_${stamp()}.json`, JSON.stringify({page: 'manual_screen_20261117', exported: new Date().toISOString(), kept: items.length - mine.length, deleted: mine}, null, 1)); };
+$('exdel').onclick = () => { const mine = [...deleted].filter(n => byName.has(n)).sort(); download(`手筛进度备份_已删${mine.length}个_${stamp()}.json`, JSON.stringify({page: 'manual_screen_20261117', exported: new Date().toISOString(), kept: items.length - mine.length, deleted: mine}, null, 1)); };
 $('imp').onclick = () => $('file').click();
 $('file').onchange = async e => {
   const f = e.target.files[0]; if (!f) return; let text = await f.text(), names; if (text.startsWith(BOM)) text = text.slice(1);
@@ -232,7 +233,8 @@ fetch('data.json').then(r => r.json()).then(data => {
   seg($('view'), [['keep', '保留中'], ['gone', '已删除'], ['all', '全部']], 'view');
   const s = data.summary, n = x => (x || 0).toLocaleString();
   $('scope').innerHTML = `<p>生成时间 ${esc(s.built_at)}。NAS 上已下载的资产共 ${n(s.downloaded)} 个，本页是其中属于人物、动物、建筑三类且有预览图的 ${n(s.shown)} 个，来源：${Object.entries(s.shown_by_source || {}).map(([k, v]) => esc(k) + ' ' + n(v)).join('，')}。已判为科幻、奇幻、迪士尼/漫威/DC 角色的不在内。每一类里估计质量高的排在前面。</p>
-<p>“删除”只是在本页做标记，不动任何文件，随时可在“已删除”里恢复。进度存在各人自己的浏览器里，不会自动同步给别人：多人分工时各自筛完点“导出删除清单”，把文件发给汇总的人，由他用“导入进度”合并。全部筛完点“导出保留清单”。</p>`;
+<p>用法：看图，不要的点“删除”（刚删的可点底部“撤销”，之后也能在“已删除”里恢复）；进度自动存在这个浏览器里，关掉再打开还在。全部筛完点右上角“筛完后：导出保留清单”，把下载的文件交回即可。</p>
+<p>“删除”只是在本页做标记，不动任何文件。已交付过的资产（三个已交付目录）已经去掉。“备份进度 / 读入进度”只在两种情况用：换浏览器或清除浏览数据之前；多人分工时各自备份后发给汇总的人读入合并（各人的进度不会自动同步）。</p>`;
   refresh();
 }).catch(e => { $('count').textContent = '数据没读出来：' + e; });
 </script>
